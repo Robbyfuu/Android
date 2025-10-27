@@ -3,6 +3,7 @@ package com.example.miappmodular.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.miappmodular.AppDependencies
 import com.example.miappmodular.repository.UserRepository
 import com.example.miappmodular.utils.ValidationUtils
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -123,8 +124,12 @@ data class LoginUiState(
  */
 class LoginViewModel(application: Application): AndroidViewModel(application) {
 
+    // Obtener el contenedor de dependencias (singleton compartido)
+    private val dependencies = AppDependencies.getInstance(application)
+
     /** Repository para operaciones de autenticación y gestión de usuarios */
-    private val userRepository = UserRepository(application)
+    // Ventaja: Todas las instancias de LoginViewModel usan el MISMO UserRepository
+    private val userRepository = dependencies.userRepository
 
     /** Estado interno mutable (privado). Solo el ViewModel puede modificarlo. */
     private val _uiState = MutableStateFlow(LoginUiState())

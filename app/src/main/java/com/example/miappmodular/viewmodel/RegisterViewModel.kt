@@ -3,6 +3,7 @@ package com.example.miappmodular.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.miappmodular.AppDependencies
 import com.example.miappmodular.repository.UserRepository
 import com.example.miappmodular.utils.ValidationUtils
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,7 +66,12 @@ data class RegisterUiState(
  */
 class RegisterViewModel(application: Application): AndroidViewModel(application) {
 
-    private  val userRepository = UserRepository(application)
+    // Obtener el contenedor de dependencias (singleton compartido)
+    private val dependencies = AppDependencies.getInstance(application)
+
+    // Obtener el UserRepository del contenedor
+    // Ventaja: LoginViewModel, RegisterViewModel y ProfileViewModel comparten la misma instancia
+    private val userRepository = dependencies.userRepository
     private val _uiState = MutableStateFlow(RegisterUiState())
     val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
 

@@ -3,6 +3,7 @@ package com.example.miappmodular.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.miappmodular.AppDependencies
 import com.example.miappmodular.model.entity.User
 import com.example.miappmodular.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,7 +69,12 @@ data class ProfileUiState(
  */
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val userRepository = UserRepository(application)
+    // Obtener el contenedor de dependencias (singleton compartido)
+    private val dependencies = AppDependencies.getInstance(application)
+
+    // Obtener el UserRepository del contenedor
+    // Ventaja: Si el usuario se carga en LoginViewModel, la caché está disponible aquí
+    private val userRepository = dependencies.userRepository
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
