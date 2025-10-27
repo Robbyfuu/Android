@@ -105,6 +105,9 @@ dependencies {
     // Permisos - Para Módulo 4
     implementation(libs.accompanist.permissions)
 
+    // Coil - Para cargar imágenes desde URI
+    implementation("io.coil-kt:coil-compose:2.6.0")
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit.v115)

@@ -1,6 +1,13 @@
 package com.example.miappmodular.ui.screens
 
+import android.Manifest
+import android.content.Context
+import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -9,13 +16,24 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.miappmodular.ui.components.*
 import com.example.miappmodular.ui.theme.*
 import com.example.miappmodular.viewmodel.ProfileViewModel
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 /**
  * Pantalla de perfil del usuario autenticado (Smart Component).
@@ -280,170 +298,310 @@ private fun ErrorState(
  * Componente de contenido principal del perfil con diseño shadcn.io.
  *
  * Renderiza la información completa del usuario cuando la carga es exitosa.
- * Organizado en dos cards principales: Avatar Card e Information Card.
+ * Incluye funcionalidad de selección de avatar desde cámara o galería.
  *
- * **Arquitectura de UI:**
- * ```
- * Column (centered, padding 24.dp)
- * ├── Avatar Card
- * │   ├── Avatar Circle (120.dp, Primary background)
- * │   │   └── Person Icon (white, 120.dp)
- * │   ├── User Name (headlineMedium, Bold)
- * │   └── User Email (bodyMedium, Muted)
- * └── Information Card
- *     ├── Title: "Información"
- *     ├── ProfileItem: Nombre completo
- *     ├── Divider
- *     ├── ProfileItem: Correo electrónico
- *     ├── Divider
- *     ├── ProfileItem: Miembro desde (formattedCreatedAt)
- *     ├── Divider (opcional)
- *     └── ProfileItem: Último acceso (opcional, solo si lastLogin != null)
- * ```
+ * **Funcionalidad de avatar:**
+ * - Avatar clickeable que abre diálogo de selección
+ * - Opción de tomar foto con cámara (requiere permiso CAMERA)
+ * - Opción de seleccionar de galería (requiere permiso READ_MEDIA_IMAGES)
+ * - Muestra imagen seleccionada usando Coil o icono por defecto
+ * - Icono de cámara en esquina inferior derecha del avatar
  *
- * **Diseño:**
- * - Avatar Card: Centrado, icono Person en círculo Primary
- * - Information Card: Lista vertical con ProfileItems separados por Dividers
- * - Spacing: 16.dp entre cards, 12.dp entre items
- * - Elevación: 1.dp en ambas cards
+ * **Manejo de permisos:**
+ * - Solicita permisos antes de abrir cámara o galería
+ * - Muestra Snackbar si los permisos son denegados
+ * - Compatible con permisos de Android 13+ y versiones anteriores
  *
- * **Formato de fechas:**
- * - **Miembro desde**: Formato español "enero 2024" (procesado en ViewModel)
- * - **Último acceso**: Formato "dd/MM/yyyy HH:mm" (ej: "15/01/2024 14:30")
+ * **Activity Result Contracts:**
+ * - TakePicture: Captura foto usando la cámara
+ * - GetContent: Selecciona imagen de galería
+ * - FileProvider: Crea URIs seguros para archivos de cámara
  *
- * **Campo opcional:**
- * El último acceso solo se muestra si `uiState.user?.lastLogin != null`.
- * Usa un bloque `let {}` para renderizado condicional.
- *
- * @param uiState Estado con User completo y formattedCreatedAt.
- * @param onRefresh Callback para recargar datos (actualmente no usado en este componente).
+ * @param uiState Estado con User completo, formattedCreatedAt y avatarUri.
+ * @param onRefresh Callback para recargar datos (no usado actualmente).
  *
  * @see ProfileItem
- * @see ShadcnCard
- * @see ShadcnDivider
- * @see com.example.miappmodular.model.entity.User
+ * @see ImagePickerDialog
+ * @see com.example.miappmodular.viewmodel.ProfileViewModel.updateAvatar
  */
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 private fun ProfileContent(
     uiState: com.example.miappmodular.viewmodel.ProfileUiState,
     onRefresh: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Avatar Card
-        ShadcnCard(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = 1.dp
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Avatar Circle
-                Surface(
-                    modifier = Modifier.size(120.dp),
-                    shape = CircleShape,
-                    color = Primary
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Person,
-                        contentDescription = null,
-                        tint = androidx.compose.ui.graphics.Color.White,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(28.dp)
-                    )
+    val context = LocalContext.current
+    val viewModel: ProfileViewModel = viewModel()
+    var showImagePicker by remember { mutableStateOf(false) }
+    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Definir los permisos según la versión de Android
+    val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        listOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.READ_MEDIA_IMAGES
+        )
+    } else {
+        listOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        )
+    }
+
+    val permissionsState = rememberMultiplePermissionsState(permissions)
+
+    // Launcher para capturar foto con cámara
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && tempCameraUri != null) {
+            viewModel.updateAvatar(tempCameraUri)
+        }
+    }
+
+    // Launcher para seleccionar imagen de galería
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            viewModel.updateAvatar(it)
+        }
+    }
+
+    // Mostrar el diálogo de selección de imagen
+    if (showImagePicker) {
+        ImagePickerDialog(
+            onDismiss = { showImagePicker = false },
+            onCameraClick = {
+                showImagePicker = false
+                if (permissionsState.permissions.any { it.permission == Manifest.permission.CAMERA && it.status.isGranted }) {
+                    // Crear archivo temporal para la foto
+                    tempCameraUri = createImageUri(context)
+                    tempCameraUri?.let { takePictureLauncher.launch(it) }
+                } else {
+                    // Solicitar permiso de cámara
+                    permissionsState.launchMultiplePermissionRequest()
+                }
+            },
+            onGalleryClick = {
+                showImagePicker = false
+                val imagePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    Manifest.permission.READ_MEDIA_IMAGES
+                } else {
+                    Manifest.permission.READ_EXTERNAL_STORAGE
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // User Name
-                Text(
-                    text = uiState.user?.name ?: "",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Foreground
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // User Email
-                Text(
-                    text = uiState.user?.email ?: "",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = ForegroundMuted
-                    )
-                )
+                if (permissionsState.permissions.any { it.permission == imagePermission && it.status.isGranted }) {
+                    // Lanzar selector de galería
+                    pickImageLauncher.launch("image/*")
+                } else {
+                    // Solicitar permiso de almacenamiento
+                    permissionsState.launchMultiplePermissionRequest()
+                }
             }
-        }
+        )
+    }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // User Information Card
-        ShadcnCard(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = 1.dp
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                modifier = Modifier.padding(24.dp)
+            // Avatar Card
+            ShadcnCard(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = 1.dp
             ) {
-                Text(
-                    text = "Información",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        color = Foreground
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Avatar Circle con imagen o icono
+                    Box(
+                        modifier = Modifier.size(120.dp),
+                        contentAlignment = Alignment.BottomEnd
+                    ) {
+                        // Avatar principal
+                        if (uiState.avatarUri != null) {
+                            // Mostrar imagen seleccionada con Coil
+                            AsyncImage(
+                                model = uiState.avatarUri,
+                                contentDescription = "Avatar del usuario",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .clickable { showImagePicker = true }
+                                    .background(Primary),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            // Mostrar icono por defecto
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable { showImagePicker = true },
+                                shape = CircleShape,
+                                color = Primary
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Person,
+                                    contentDescription = "Seleccionar avatar",
+                                    tint = androidx.compose.ui.graphics.Color.White,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(28.dp)
+                                )
+                            }
+                        }
+
+                        // Icono de cámara en esquina
+                        Surface(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clickable { showImagePicker = true },
+                            shape = CircleShape,
+                            color = Surface,
+                            shadowElevation = 2.dp
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.CameraAlt,
+                                contentDescription = "Cambiar foto",
+                                tint = Primary,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // User Name
+                    Text(
+                        text = uiState.user?.name ?: "",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Foreground
+                        )
                     )
-                )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                ProfileItem(
-                    icon = Icons.Filled.Person,
-                    label = "Nombre completo",
-                    value = uiState.user?.name ?: ""
-                )
+                    // User Email
+                    Text(
+                        text = uiState.user?.email ?: "",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = ForegroundMuted
+                        )
+                    )
+                }
+            }
 
-                Spacer(modifier = Modifier.height(12.dp))
-                ShadcnDivider()
-                Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-                ProfileItem(
-                    icon = Icons.Filled.Email,
-                    label = "Correo electrónico",
-                    value = uiState.user?.email ?: ""
-                )
+            // User Information Card
+            ShadcnCard(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = 1.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    Text(
+                        text = "Información",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = Foreground
+                        )
+                    )
 
-                Spacer(modifier = Modifier.height(12.dp))
-                ShadcnDivider()
-                Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                ProfileItem(
-                    icon = Icons.Filled.CalendarToday,
-                    label = "Miembro desde",
-                    value = uiState.formattedCreatedAt
-                )
+                    ProfileItem(
+                        icon = Icons.Filled.Person,
+                        label = "Nombre completo",
+                        value = uiState.user?.name ?: ""
+                    )
 
-                uiState.user?.lastLogin?.let { lastLogin ->
                     Spacer(modifier = Modifier.height(12.dp))
                     ShadcnDivider()
                     Spacer(modifier = Modifier.height(12.dp))
 
                     ProfileItem(
-                        icon = Icons.Filled.AccessTime,
-                        label = "Último acceso",
-                        value = java.text.SimpleDateFormat(
-                            "dd/MM/yyyy HH:mm",
-                            java.util.Locale("es", "ES")
-                        ).format(lastLogin)
+                        icon = Icons.Filled.Email,
+                        label = "Correo electrónico",
+                        value = uiState.user?.email ?: ""
                     )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ShadcnDivider()
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    ProfileItem(
+                        icon = Icons.Filled.CalendarToday,
+                        label = "Miembro desde",
+                        value = uiState.formattedCreatedAt
+                    )
+
+                    uiState.user?.lastLogin?.let { lastLogin ->
+                        Spacer(modifier = Modifier.height(12.dp))
+                        ShadcnDivider()
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        ProfileItem(
+                            icon = Icons.Filled.AccessTime,
+                            label = "Último acceso",
+                            value = SimpleDateFormat(
+                                "dd/MM/yyyy HH:mm",
+                                Locale("es", "ES")
+                            ).format(lastLogin)
+                        )
+                    }
                 }
             }
         }
+
+        // Snackbar para mensajes de permisos
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+    }
+}
+
+/**
+ * Crea un URI temporal para guardar la foto capturada por la cámara.
+ *
+ * Utiliza FileProvider para crear un URI seguro que puede ser compartido
+ * con la aplicación de cámara. El archivo se crea en el directorio Pictures
+ * del almacenamiento externo de la aplicación.
+ *
+ * **Patrón de nombres:**
+ * - Formato: "profile_avatar_YYYYMMDD_HHmmss.jpg"
+ * - Ejemplo: "profile_avatar_20240115_143025.jpg"
+ *
+ * **Ubicación:**
+ * - context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+ * - No requiere permisos de almacenamiento en Android 10+
+ *
+ * @param context Contexto de la aplicación
+ * @return Uri del archivo temporal, o null si hay error
+ */
+private fun createImageUri(context: Context): Uri? {
+    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+    val imageFileName = "profile_avatar_$timeStamp.jpg"
+    val storageDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+
+    return try {
+        val imageFile = File(storageDir, imageFileName)
+        FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            imageFile
+        )
+    } catch (e: Exception) {
+        null
     }
 }
 
