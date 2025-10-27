@@ -14,7 +14,12 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 /**
- * Estados del perfil de usuario
+ * Estado de la pantalla de perfil de usuario.
+ *
+ * @property isLoading Indica si los datos del perfil se están cargando.
+ * @property user Objeto User con todos los datos del perfil. Null si aún no se carga.
+ * @property error Mensaje de error si falla la carga del perfil.
+ * @property formattedCreatedAt Fecha de creación formateada (ej: "enero 2024").
  */
 data class ProfileUiState(
     val isLoading: Boolean = true,
@@ -24,7 +29,42 @@ data class ProfileUiState(
 )
 
 /**
- * ViewModel para la pantalla de perfil
+ * ViewModel para la pantalla de perfil de usuario.
+ *
+ * Carga y muestra los datos del perfil del usuario autenticado actualmente.
+ * Formatea fechas para mostrar en la UI de forma legible.
+ *
+ * **Inicialización:**
+ * El perfil se carga automáticamente en el bloque `init {}`, por lo que
+ * la UI solo necesita observar el `uiState` sin llamar manualmente a load.
+ *
+ * **Formato de fecha:**
+ * Usa SimpleDateFormat con locale español para mostrar fechas como:
+ * - "enero 2024"
+ * - "diciembre 2023"
+ *
+ * Ejemplo de uso:
+ * ```kotlin
+ * @Composable
+ * fun ProfileScreen(viewModel: ProfileViewModel = viewModel()) {
+ *     val uiState by viewModel.uiState.collectAsState()
+ *
+ *     when {
+ *         uiState.isLoading -> LoadingSpinner()
+ *         uiState.error != null -> ErrorMessage(uiState.error!!)
+ *         uiState.user != null -> {
+ *             ProfileCard(
+ *                 name = uiState.user!!.name,
+ *                 email = uiState.user!!.email,
+ *                 memberSince = uiState.formattedCreatedAt
+ *             )
+ *         }
+ *     }
+ * }
+ * ```
+ *
+ * @see ProfileUiState
+ * @see UserRepository.getCurrentUser
  */
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -37,7 +77,15 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * Carga el perfil del usuario actual
+     * Carga el perfil del usuario autenticado desde el Repository.
+     *
+     * Llamado automáticamente al inicializar el ViewModel.
+     * Formatea la fecha de creación al formato "mes año" en español.
+     *
+     * Posibles resultados:
+     * - Usuario encontrado: `user != null`, `formattedCreatedAt` con fecha
+     * - Usuario no encontrado: `error = "No se encontró el usuario"`
+     * - Error de carga: `error` con mensaje de excepción
      */
     private fun loadUserProfile() {
         viewModelScope.launch {
@@ -78,7 +126,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * Recarga el perfil
+     * Recarga el perfil del usuario.
+     *
+     * Útil para:
+     * - Pull-to-refresh en la UI
+     * - Refrescar datos tras actualizar el perfil
+     * - Reintentar tras un error de carga
      */
     fun refresh() {
         loadUserProfile()

@@ -23,10 +23,30 @@ import com.example.miappmodular.viewmodel.LoginViewModel
 import com.example.miappmodular.viewmodel.LoginUiState
 
 /**
- * Pantalla de Login con diseño shadcn.io (Smart Component)
+ * Pantalla de autenticación de usuarios (Smart Component).
  *
- * Este es el componente "smart" que maneja el ViewModel y la lógica de negocio.
- * Para previews, pasa directamente a LoginScreenContent.
+ * **Patrón Smart/Dumb Components:**
+ * - **Smart (este)**: Maneja ViewModel, estado y navegación
+ * - **Dumb ([LoginScreenContent])**: Solo UI pura, apta para @Preview
+ *
+ * **Funcionalidad:**
+ * - Autenticación con email y contraseña
+ * - Validación en tiempo real mientras se escribe
+ * - Navegación automática al Home tras login exitoso
+ * - Navegación a pantalla de registro
+ * - Diseño shadcn.io con componentes reutilizables
+ *
+ * **Navegación:**
+ * Usa [LaunchedEffect] para observar [LoginUiState.isSuccess] y
+ * navegar automáticamente cuando el login es exitoso.
+ *
+ * @param viewModel ViewModel con lógica de autenticación (inyectado automáticamente).
+ * @param onNavigateToRegister Callback para navegar a pantalla de registro.
+ * @param onLoginSuccess Callback ejecutado tras login exitoso (navega a Home).
+ *
+ * @see LoginViewModel
+ * @see LoginScreenContent
+ * @see com.example.miappmodular.ui.navigation.AppNavigation
  */
 @Composable
 fun LoginScreen(

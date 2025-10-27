@@ -17,7 +17,65 @@ import com.example.miappmodular.ui.components.*
 import com.example.miappmodular.ui.theme.*
 
 /**
- * Pantalla Home con diseño shadcn.io
+ * Pantalla principal (Dashboard) de la aplicación tras autenticación exitosa.
+ *
+ * **Funcionalidad:**
+ * - Dashboard centralizado con vista general de la app
+ * - TopBar personalizado shadcn.io con logo, título y acciones
+ * - Tarjetas de estadísticas (Total Usuarios, Activos Hoy)
+ * - Grid de módulos/features con badges de versión de implementación
+ * - Navegación a perfil de usuario y logout
+ * - Navegación a módulos individuales (Map, Camera, etc.)
+ *
+ * **Arquitectura de UI:**
+ * ```
+ * HomeScreen
+ * ├── TopBar (Surface + Row)
+ * │   ├── Logo + Título "Mi App Modular"
+ * │   └── Actions: Profile Icon + Logout Icon
+ * ├── StatCards (Row con 2 cards)
+ * │   ├── Total Usuarios (1,234)
+ * │   └── Activos Hoy (89)
+ * └── Módulos Grid (LazyVerticalGrid 2 columnas)
+ *     ├── Mapa GPS (IL 2.4)
+ *     ├── Cámara (IL 2.4)
+ *     ├── Base de Datos (IL 2.3)
+ *     ├── Configuración (IL 2.3)
+ *     ├── Temas (IL 2.1)
+ *     └── Notificaciones (IL 2.2)
+ * ```
+ *
+ * **Diseño shadcn.io:**
+ * - TopBar: Surface con elevación 1.dp y divider inferior
+ * - Background: BackgroundSecondary para contraste
+ * - Grid: 2 columnas fijas con spacing 12.dp
+ * - Cards: FeatureModuleCard con badge, icono, título, descripción
+ * - StatCards: Layout horizontal con icono y valores numéricos
+ *
+ * **Badges de módulos:**
+ * Los badges indican el nivel de implementación (IL = Implementation Level):
+ * - IL 2.4: Completamente implementado
+ * - IL 2.3: Funcional pero incompleto
+ * - IL 2.2: En desarrollo
+ * - IL 2.1: Prototipo
+ *
+ * **Navegación:**
+ * - Icono Profile → Navega a ProfileScreen
+ * - Icono Logout → Cierra sesión y regresa a LoginScreen (backstack limpiado)
+ * - Cards de módulos → Navegan a sus respectivas pantallas
+ *
+ * **Solo accesible tras autenticación exitosa.** Si el usuario no está
+ * autenticado, el AppNavigation debe redirigir automáticamente a LoginScreen.
+ *
+ * @param onNavigateToProfile Callback para navegar a pantalla de perfil.
+ * @param onNavigateToMap Callback para navegar a módulo de mapa GPS.
+ * @param onNavigateToCamera Callback para navegar a módulo de cámara.
+ * @param onLogout Callback para cerrar sesión y regresar a login.
+ *
+ * @see StatCard
+ * @see FeatureModuleCard
+ * @see com.example.miappmodular.ui.navigation.AppNavigation
+ * @see ProfileScreen
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -236,7 +294,42 @@ fun HomeScreen(
 }
 
 /**
- * Card de estadística estilo shadcn.io
+ * Tarjeta de estadística reutilizable con diseño shadcn.io.
+ *
+ * Componente presentacional que muestra una métrica clave con su valor
+ * numérico y un icono representativo. Usado típicamente en dashboards
+ * para mostrar KPIs (Key Performance Indicators) de forma visual.
+ *
+ * **Diseño:**
+ * - Layout horizontal: Texto a la izquierda, icono a la derecha
+ * - Título: bodySmall, ForegroundMuted, Medium weight
+ * - Valor: headlineMedium, Foreground, Bold (destaca el número)
+ * - Icono: Surface con fondo Muted, tamaño 40.dp
+ * - Elevación: 1.dp (sombra sutil)
+ *
+ * **Ejemplo de uso:**
+ * ```kotlin
+ * StatCard(
+ *     title = "Ventas Hoy",
+ *     value = "$12,345",
+ *     icon = Icons.Filled.AttachMoney,
+ *     modifier = Modifier.weight(1f)
+ * )
+ * ```
+ *
+ * **Casos de uso comunes:**
+ * - Estadísticas de usuarios (totales, activos, nuevos)
+ * - Métricas de ventas o ingresos
+ * - Contadores de eventos o notificaciones
+ * - Cualquier KPI numérico que requiera visualización compacta
+ *
+ * @param title Etiqueta descriptiva de la métrica (ej: "Total Usuarios").
+ * @param value Valor numérico o texto a destacar (ej: "1,234" o "$5.6K").
+ * @param icon Icono representativo de la métrica (Material Icons).
+ * @param modifier Modificador opcional para layout (ej: .weight() en Row).
+ *
+ * @see ShadcnCard
+ * @see HomeScreen
  */
 @Composable
 fun StatCard(
@@ -293,7 +386,57 @@ fun StatCard(
 }
 
 /**
- * Card de módulo/feature estilo shadcn.io
+ * Tarjeta clickable para módulos/features de la aplicación con diseño shadcn.io.
+ *
+ * Componente reutilizable que representa un módulo o feature de la app en el
+ * dashboard principal. Diseñado para grids LazyVerticalGrid con aspecto ratio 1:1.
+ *
+ * **Diseño:**
+ * - Layout vertical con 3 secciones:
+ *   1. Header: Icono (48.dp, fondo Muted) + Badge en esquina superior derecha
+ *   2. Body: Título (titleMedium, SemiBold) + Descripción (bodySmall, Muted)
+ *   3. Footer: "Abrir" + ArrowForward icon (color Primary)
+ * - AspectRatio 1:1 (cuadrado perfecto)
+ * - Padding interno: 16.dp
+ * - Elevación: 1.dp
+ * - Clickable con efecto ripple
+ *
+ * **Badges:**
+ * Indican el nivel de implementación del módulo:
+ * - IL 2.4: Completamente funcional y testeado
+ * - IL 2.3: Funcional con features pendientes
+ * - IL 2.2: En desarrollo activo
+ * - IL 2.1: Prototipo o demo
+ *
+ * **Ejemplo de uso:**
+ * ```kotlin
+ * LazyVerticalGrid(columns = GridCells.Fixed(2)) {
+ *     item {
+ *         FeatureModuleCard(
+ *             icon = Icons.Filled.Map,
+ *             title = "Mapa GPS",
+ *             description = "Ubicación y navegación",
+ *             badge = "IL 2.4",
+ *             onClick = { navController.navigate("map") }
+ *         )
+ *     }
+ * }
+ * ```
+ *
+ * **Variaciones de estado:**
+ * - Normal: Fondo blanco, borde sutil
+ * - Hover/Press: Ripple effect con color Primary
+ * - Disabled: Se puede implementar con enabled parameter en futuras versiones
+ *
+ * @param icon Icono Material que representa el módulo visualmente.
+ * @param title Nombre del módulo (ej: "Mapa GPS", "Cámara").
+ * @param description Descripción breve de la funcionalidad (1-3 palabras).
+ * @param badge Etiqueta de versión/nivel de implementación (ej: "IL 2.4").
+ * @param onClick Callback ejecutado al hacer click en el card.
+ *
+ * @see ShadcnCard
+ * @see ShadcnBadge
+ * @see HomeScreen
  */
 @Composable
 fun FeatureModuleCard(

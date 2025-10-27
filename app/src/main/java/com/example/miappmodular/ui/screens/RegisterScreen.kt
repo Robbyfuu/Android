@@ -22,10 +22,50 @@ import com.example.miappmodular.ui.theme.*
 import com.example.miappmodular.viewmodel.*
 
 /**
- * RegisterScreen (Smart Component)
+ * Pantalla de registro de nuevos usuarios (Smart Component).
  *
- * Componente inteligente que maneja el ViewModel y la lógica de negocio.
- * Para previews, pasa viewModel = null.
+ * **Patrón Smart/Dumb Components:**
+ * - **Smart (este)**: Maneja ViewModel, estado y navegación
+ * - **Dumb ([RegisterScreenContent])**: Solo UI pura, apta para @Preview
+ *
+ * **Funcionalidad:**
+ * - Registro con nombre completo, email y contraseña
+ * - Confirmación de contraseña con validación de coincidencia
+ * - Validación en tiempo real mientras se escribe
+ * - Navegación automática al Home tras registro exitoso
+ * - Navegación de regreso a pantalla de login
+ * - Diseño shadcn.io con componentes reutilizables y scrollable
+ *
+ * **Validaciones implementadas:**
+ * - Nombre: Mínimo 3 caracteres
+ * - Email: Formato RFC 5322 válido
+ * - Contraseña: 8 caracteres mínimo, mayúscula, minúscula y número
+ * - Confirmación: Debe coincidir exactamente con la contraseña
+ *
+ * **Navegación:**
+ * Usa [LaunchedEffect] para observar [RegisterUiState.isSuccess] y
+ * navegar automáticamente cuando el registro es exitoso. El backstack
+ * se limpia para prevenir volver a pantallas de autenticación.
+ *
+ * **Flujo de registro:**
+ * ```
+ * 1. Usuario completa formulario (name, email, password, confirmPassword)
+ * 2. Validación en tiempo real en cada campo
+ * 3. Usuario presiona "Registrarse"
+ * 4. Validación completa + verificación de passwords coincidentes
+ * 5. API POST /auth/signup
+ * 6. Guarda User en Room + Session en DataStore
+ * 7. Navega a Home (backstack limpiado)
+ * ```
+ *
+ * @param viewModel ViewModel con lógica de registro (inyectado automáticamente).
+ * @param onNavigateBack Callback para regresar a pantalla de login.
+ * @param onRegisterSuccess Callback ejecutado tras registro exitoso (navega a Home).
+ *
+ * @see RegisterViewModel
+ * @see RegisterScreenContent
+ * @see com.example.miappmodular.ui.navigation.AppNavigation
+ * @see com.example.miappmodular.repository.UserRepository.registerUser
  */
 @Composable
 fun RegisterScreen(
@@ -56,10 +96,50 @@ fun RegisterScreen(
 
 
 /**
- * RegisterScreenContent (Presentational/Dumb Component)
+ * RegisterScreenContent (Presentational/Dumb Component).
  *
- * Componente de UI pura para la pantalla de registro.
- * No tiene dependencias del ViewModel, por lo que es seguro para usar en @Preview.
+ * Componente de UI pura sin dependencias del ViewModel. Renderiza la interfaz
+ * de registro con 4 campos de formulario y manejo de errores mediante Snackbar.
+ *
+ * **Características de UI:**
+ * - Card principal con icono PersonAdd y título
+ * - 4 campos ShadcnInput: nombre, email, password, confirmPassword
+ * - Validación visual con mensajes de error bajo cada campo
+ * - Botón de registro con estado loading
+ * - Botón secundario "Ya tengo cuenta" para volver al login
+ * - Snackbar para errores generales (ej: error de API)
+ * - Scrollable verticalmente para pantallas pequeñas
+ *
+ * **Diseño shadcn.io:**
+ * - Paleta: Primary, ForegroundMuted, BackgroundSecondary
+ * - Componentes: ShadcnInput, ShadcnButton, ShadcnCard, ShadcnSnackbar
+ * - Variantes: ButtonVariant.Default y ButtonVariant.Outline
+ * - Elevación: 1.dp en card principal
+ *
+ * **Estados manejados:**
+ * - Normal: Todos los campos vacíos y habilitados
+ * - Con errores: Bordes rojos y mensajes de error visibles
+ * - Loading: Botón deshabilitado con CircularProgressIndicator
+ * - Error general: Snackbar rojo con duración corta
+ *
+ * **IME Actions:**
+ * - Nombre → Next (salta a email)
+ * - Email → Next (salta a password)
+ * - Password → Next (salta a confirmPassword)
+ * - ConfirmPassword → Done (ejecuta onRegisterClick)
+ *
+ * @param uiState Estado inmutable con datos y errores del formulario.
+ * @param onNameChange Callback invocado al cambiar el nombre.
+ * @param onEmailChange Callback invocado al cambiar el email.
+ * @param onPasswordChange Callback invocado al cambiar la contraseña.
+ * @param onConfirmPasswordChange Callback invocado al cambiar la confirmación.
+ * @param onRegisterClick Callback para iniciar el proceso de registro.
+ * @param onNavigateBack Callback para volver a la pantalla de login.
+ * @param onCleanError Callback para limpiar el error general tras mostrarlo.
+ *
+ * @see RegisterUiState
+ * @see com.example.miappmodular.ui.components.ShadcnInput
+ * @see com.example.miappmodular.ui.components.ShadcnButton
  */
 @Composable
 fun RegisterScreenContent(

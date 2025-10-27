@@ -90,6 +90,13 @@ dependencies {
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
 
+    // Retrofit - Para integración con API
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)
+    implementation(libs.gson)
+
     // Maps - Para Módulo 4
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
