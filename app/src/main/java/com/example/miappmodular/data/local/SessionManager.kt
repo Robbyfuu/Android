@@ -1,4 +1,4 @@
-package com.example.miappmodular.model
+package com.example.miappmodular.data.local
 
 import android.content.Context
 import androidx.datastore.core.DataStore

@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.example.miappmodular.network.RetrofitClient
+import com.example.miappmodular.data.remote.RetrofitClient
 import com.example.miappmodular.ui.navigation.AppNavigation
 import com.example.miappmodular.ui.theme.MiAppModularTheme
 

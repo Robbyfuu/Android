@@ -1,11 +1,12 @@
 package com.example.miappmodular
 
 import android.app.Application
-import com.example.miappmodular.model.SessionManager
-import com.example.miappmodular.model.dao.UserDao
-import com.example.miappmodular.model.database.AppDatabase
-import com.example.miappmodular.network.AuthApiService
-import com.example.miappmodular.network.RetrofitClient
+import com.example.miappmodular.data.local.SessionManager
+import com.example.miappmodular.data.local.dao.UserDao
+import com.example.miappmodular.data.local.database.AppDatabase
+import com.example.miappmodular.data.remote.AuthApiService
+import com.example.miappmodular.data.remote.RetrofitClient
+import com.example.miappmodular.repository.AvatarRepository
 import com.example.miappmodular.repository.UserRepository
 
 /**
@@ -93,18 +94,21 @@ import com.example.miappmodular.repository.UserRepository
  * @property sessionManager Gestor de sesión único para toda la app
  * @property database Instancia de Room Database (singleton)
  * @property apiService Cliente de API Retrofit
+ * @property avatarRepository Repositorio para persistencia del avatar del usuario
  *
  * @see UserRepository
  * @see SessionManager
  * @see AppDatabase
  * @see AuthApiService
+ * @see AvatarRepository
  */
 class AppDependencies(
     val userRepository: UserRepository,
     val sessionManager: SessionManager,
     val database: AppDatabase,
     val apiService: AuthApiService,
-    val userDao: UserDao
+    val userDao: UserDao,
+    val avatarRepository: AvatarRepository
 ) {
     companion object {
         /**
@@ -180,12 +184,16 @@ class AppDependencies(
             // 5. Crear UserRepository con todas sus dependencias
             val userRepository = UserRepository(application)
 
+            // 6. Crear AvatarRepository para persistencia del avatar
+            val avatarRepository = AvatarRepository(application)
+
             return AppDependencies(
                 userRepository = userRepository,
                 sessionManager = sessionManager,
                 database = database,
                 apiService = apiService,
-                userDao = userDao
+                userDao = userDao,
+                avatarRepository = avatarRepository
             )
         }
 

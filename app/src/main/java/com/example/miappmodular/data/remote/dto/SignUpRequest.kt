@@ -1,4 +1,4 @@
-package com.example.miappmodular.model.dto
+package com.example.miappmodular.data.remote.dto
 
 import com.google.gson.annotations.SerializedName
 

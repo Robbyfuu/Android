@@ -1,4 +1,4 @@
-package com.example.miappmodular.model.entity
+package com.example.miappmodular.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

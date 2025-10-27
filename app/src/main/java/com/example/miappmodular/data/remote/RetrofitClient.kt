@@ -1,7 +1,7 @@
-package com.example.miappmodular.network
+package com.example.miappmodular.data.remote
 
 import android.content.Context
-import com.example.miappmodular.model.SessionManager
+import com.example.miappmodular.data.local.SessionManager
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit

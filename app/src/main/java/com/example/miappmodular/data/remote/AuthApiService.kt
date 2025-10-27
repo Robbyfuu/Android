@@ -1,8 +1,8 @@
-package com.example.miappmodular.network
+package com.example.miappmodular.data.remote
 
-import com.example.miappmodular.model.dto.AuthResponse
-import com.example.miappmodular.model.dto.LoginRequest
-import com.example.miappmodular.model.dto.SignUpRequest
+import com.example.miappmodular.data.remote.dto.AuthResponse
+import com.example.miappmodular.data.remote.dto.LoginRequest
+import com.example.miappmodular.data.remote.dto.SignUpRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST

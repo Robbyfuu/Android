@@ -1,12 +1,12 @@
 package com.example.miappmodular.repository
 
 import android.content.Context
-import com.example.miappmodular.model.SessionManager
-import com.example.miappmodular.model.database.AppDatabase
-import com.example.miappmodular.model.dto.LoginRequest
-import com.example.miappmodular.model.dto.SignUpRequest
-import com.example.miappmodular.model.entity.User
-import com.example.miappmodular.network.RetrofitClient
+import com.example.miappmodular.data.local.SessionManager
+import com.example.miappmodular.data.local.database.AppDatabase
+import com.example.miappmodular.data.remote.dto.LoginRequest
+import com.example.miappmodular.data.remote.dto.SignUpRequest
+import com.example.miappmodular.data.local.entity.User
+import com.example.miappmodular.data.remote.RetrofitClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull

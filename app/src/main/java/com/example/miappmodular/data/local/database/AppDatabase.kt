@@ -1,9 +1,9 @@
-package com.example.miappmodular.model.database
+package com.example.miappmodular.data.local.database
 
 import android.content.Context
 import androidx.room.*
-import com.example.miappmodular.model.dao.UserDao
-import com.example.miappmodular.model.entity.User
+import com.example.miappmodular.data.local.dao.UserDao
+import com.example.miappmodular.data.local.entity.User
 import java.util.Date
 
 /**

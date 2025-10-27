@@ -1,6 +1,6 @@
-package com.example.miappmodular.network
+package com.example.miappmodular.data.remote
 
-import com.example.miappmodular.model.SessionManager
+import com.example.miappmodular.data.local.SessionManager
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
