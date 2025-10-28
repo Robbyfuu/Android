@@ -291,7 +291,7 @@ fun LoginScreenContent(
                                     )
                                 )
                                 Text(
-                                    text = "test@test.com",
+                                    text = "rob@email.com",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         fontWeight = FontWeight.Normal,
                                         color = Foreground
@@ -307,7 +307,7 @@ fun LoginScreenContent(
                                     )
                                 )
                                 Text(
-                                    text = "Test1234",
+                                    text = "Roberto1",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         fontWeight = FontWeight.Normal,
                                         color = Foreground
